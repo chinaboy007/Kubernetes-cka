@@ -13,13 +13,13 @@
 这是一个基于Kubernetes v1.20.0集群来进行CKA认证(Certified Kubernetes Administrator),相关题目练习的集群。
 
 ## 第一题: RBAC鉴权
-**题目要求:** 
+**题目要求:**  
 创建clusterrole，只允许创建deployment,daemonset,statefulset资源
 在现有的namespace app-team1中创建一个名为cicd-token的新ServiceAccount
 限于namespace app-team1，将新的ClusterRole deployment-clusterrole绑定到新的ServiceAccount cidi-token
 
 ## 第二题: 节点设置不可用
-**题目要求:**\n
+**题目要求:**  
 将名为ek8s-node-1的node设置为不可用，并重新调度该node上所有运行的pods
 
 ## 第三题: 升级K8s版本
