@@ -1,6 +1,6 @@
 ## 目录
 - [背景](#背景)  
-- [第一题:RBAC鉴权](#第一题:RBAC鉴权)
+- [RBAC鉴权](#RBAC鉴权)
 - [第二题:节点设置不可用](#第二题:节点设置不可用)
 - [第三题:升级K8s版本](#第三题:升级K8s版本)
 - [第四题:etcd备份与恢复](#第四题:etcd备份与恢复)
@@ -22,7 +22,7 @@
 ## 背景
 这是一个基于Kubernetes v1.20.0集群来进行CKA认证(Certified Kubernetes Administrator),相关题目练习的集群。
 
-## 第一题:RBAC鉴权
+## RBAC鉴权
 **题目要求:**  
 创建clusterrole，只允许创建deployment,daemonset,statefulset资源  
 在现有的namespace app-team1中创建一个名为cicd-token的新ServiceAccount  
