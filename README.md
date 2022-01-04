@@ -19,7 +19,7 @@
 限于namespace app-team1，将新的ClusterRole deployment-clusterrole绑定到新的ServiceAccount cidi-token
 
 ## 第二题: 节点设置不可用
-**题目要求:**
+**题目要求:**\n
 将名为ek8s-node-1的node设置为不可用，并重新调度该node上所有运行的pods
 
 ## 第三题: 升级K8s版本
