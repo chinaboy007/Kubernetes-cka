@@ -1,0 +1,253 @@
+################ 第一题：RBAC鉴权
+# 创建clusterrole，只允许创建deployment,daemonset,statefulset资源
+kubectl create clusterrole deployment-clusterrole --verb=create --resource=deployments,daemonsets,statefulsets
+
+# 在现有的namespace app-team1中创建一个名为cicd-token的新ServiceAccount
+kubectl create ns app-team1
+kubectl create serviceaccount cicd-token -n app-team1
+
+# 限于namespace app-team1，将新的ClusterRole deployment-clusterrole绑定到新的ServiceAccount cidi-token
+kubectl create rolebinding cicd-token --serviceaccount=app-team1:cicd-token --clusterrole=deployment-clusterrole -n app-team1
+
+################ 第二题：节点设置不可用
+# 将名为ek8s-node-1的node设置为不可用，并重新调度该node上所有运行的pods
+kubectl cordon ek8s-node-1
+kubectl drain --ignore-daemonsets ek8s-node-1
+
+################ 第三题：升级K8s版本
+# 现有的Kubernetes集群正在运行版本为1.20.0，仅将主节点上的所有Kubernetes控制平面和节点组件升级到版本为1.20.1
+# 确保在升级之前drain主节点，并在升级后uncordon主节点
+kubectl drain --ignore-daemonsets ek8s-master       # 驱逐master节点上的pod
+yum install -y kubeadm-1.20.1-0     		    # 安装kubeadm对应版本。考试中是呀apt install安装
+kubeadm upgrade plan                		    # 验证升级计划
+kubeadm upgrade apply v1.20.1 --etcd-upgrade=false  # 应用升级，但是不对etcd进行升级(题目没有要求)
+kubectl uncordon ek8s-master        		    # 移除node.kubernetes.io/unschedulable:NoSchedule标签
+yum -y install kubelet-1.20.1-0 kubectl-1.20.1-0    # kubelet，kubectl安装对应版本
+systemctl restart kubelet           		    # 重启kubelet
+kubectl get nodes
+
+################ 第四题： etcd备份与恢复
+# 首先，为运行在https://127.0.0.1:2379 上的现有etcd实例创建快照并将快照保存到 /data/backup/etcd-snapshot.db
+# 然后还原位于 /data/backup/etcd-snapshot-previous.db的现有先前快照(提供了TLS证书和密钥路径，连接etcd服务器)
+ETCDCTL_API=3 etcdctl snapshot save /data/backup/etcd-snapshot.db --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key	# 备份etcd(--cacert对应CA证书路径，--cert对应客户端证书，--key对应客户端密钥)
+systemctl stop etcd	# 停止运行etcd
+systemctl cat etcd      # 确认下数据目录
+mv /var/lib/etcd /var/lib/etcd.bak				# 备份原有etcd数据目录
+ETCDCTL_API=3 etcdctl snapshot restore /data/backup/etcd-snapshot.db --data-dir=/var/lib/etcd	# 恢复etcd
+chown -R etcd:etcd /var/lib/etcd				# 修改目录权限
+systemctl start etcd	# 启动
+
+
+################ 第五题: 网络策略
+# 在现有的namespace my-app中创建一个名为allow-port-from-namespace的新NetworkPolicy
+# 确保新的NetworkPolicy允许namespace my-app中的Pods来连接到namespace big-corp中的端口8080
+# 进一步确保新的NetworkPolicy
+## 不允许对没有在监听端口8080的Pods的访问
+## 不允许不来自namespace my-app中的Pods的访问
+echo 'apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-port-from-namespace
+  namespace: my-app
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: big-corp
+    ports:
+    - protocol: TCP
+      port: 8080' > networkpolic.yaml
+
+################ 第六题: SVC 暴露应用
+# 请重新配置现有的部署front-end以及添加名为http的端口规范来公开现有容器nginx的端口80/tcp
+# 创建一个名为front-end-svc的新服务，以公开容器端口http
+# 配置此服务，以通过在排定的节点上的NodePort来公开各个Pods
+kubectl edit deployment front-end
+        containers:
+          ports:
+          - containerPort: 80
+            name: http
+            protocol: TCP
+
+kubectl expose deployment front-end --port=80 --target-port=80 --type=NodePort --name=front-end-svc
+
+################ 第七题: Ingress
+# 如下创建一个新的nginx Ingress资源：
+# 名称：pong
+# Namespace：ing-internal
+# 使用服务端口5678在路径/hello上公开服务hello
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pong
+  namespace: ing-internal
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /hello
+        pathType: Prefix
+        backend:
+          service:
+            name: hello
+            port:
+              number: 5678
+
+################ 第八题: 扩容Pod数量
+# 将deployment从loadbalancer扩展至5pods
+kubectl scale deployment loadbalancer --replicas=5
+
+################ 第九题: nodeSelector
+# 按如下要求调度一个Pod
+# 名称：nginx-kusc00401
+# image: nginx
+# Node selector: disk=ssd
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-kusc00401
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+  nodeSelector:
+    disk: ssd
+
+################ 第十题: 统计准备就绪节点数量 
+# 检查有多少worker nodes已准备就绪(不包括被打上Taint: NoSchedule的节点)，并将数量写入/opt/KUSC00402/kusc00402.txt
+kubectl describe nodes `kubectl get nodes | grep "[[:space:]]Ready" | awk '{print $1}'` | grep "Taint" | grep -vc NoSchedule > /opt/KUSC00402/kusc00402.txt
+
+################ 第十一题: Pod配置多容器
+# 创建一个名为kucc4的pod，在pod里面分别为以下每个images单独运行一个app container(可能会有1-4个images)：nginx+redis+memcached
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kucc4
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+  - name: redis
+    image: redis
+  - name: memcached
+    image: memcached
+
+################ 第十二题: 创建 PV
+# 创建名为app-data的persistent volume，容量为2Gi，访问模式为ReadWriteOnce。volume类型为hostPath，位于/srv/app-data
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: app-data
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/svr/app-data"
+
+################ 第十三题: Pod使用PVC
+# 创建一个新的PersistentVolumeClaim
+# 名称：pv-volume
+# Class：csi-hostpath-sc
+# 容量：10Mi
+
+# 创建一个新的Pod，此Pod将作为volume挂载到PersistenVolumeClaim
+# 名称：web-server
+# image：nginx
+# 挂载路径：/usr/share/nginx/html
+
+# 配置新的Pod，以对volume具有ReadWriteOnce权限
+# 最后，使用kubectl edit或者kubectl patch将PersistenVolumeClaim的容量扩展为70Mi，并记录此更改。 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-volume
+spec:
+  storageClassName: csi-hostpath-sc
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Mi
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-server
+spec:
+  containers:
+    - name: web-server
+      image: nginx
+      ports:
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: pv-volume
+
+kubectl edit pvc pv-volume --save-config
+
+################ 第十四题: 获取Pod错误日志
+# 监控pod bar的日志并：提取与错误file-not-found相对应的日志行。将这些日志行写入/opt/KUTR00101/bar
+kubectl logs bar | grep "file-not-found" > /opt/KUTR00101/bar
+
+################ 第十五题: 给Pod增加一个容器(边车)
+# 使用busybox Image来将名为sidecar的sidecar容器添加到现有的Pod legacy-app中。新的sidecar容器必须运行以下命令:
+# /bin/sh -c tail -n+1 -f /var/log/legacy-app.log
+# 使用安装在/var/log的Volume，使日志文件legacy-app.log可用于sidecar容器
+apiVersion: v1
+kind: Pod
+metadata:
+  name: legacy-app
+spec:
+  containers:
+  - name: count
+    image: busybox
+    args:
+    - /bin/sh
+    - -c
+    - >
+      i=0;
+      while true;
+      do
+        echo "$i: $(date)" >> /var/log/legacy-app.log;
+        sleep 1;
+      done      
+    volumeMounts:
+    - name: varlog
+      mountPath: /var/log
+  - name: sidecar
+    image: busybox
+    args: [/bin/sh, -c, 'tail -n+1 -f /var/log/legacy-app.log']
+    volumeMounts:
+    - name: varlog
+      mountPath: /var/log
+  volumes:
+  - name: varlog
+    emptyDir: {}
+
+################ 第十六题: 统计使用CPU最高的Pod 
+# 通过pod label name=cpu-utilizer，找到运行占用大量CPU的pod，并将占用CPU最高的pod名称写入文件/opt/KUTR00401/KUTR00401.txt（已存在）
+kubectl top pods -l name=cpu-utilizer --sort-by=cpu -A | head -2 | tail -1 | awk '{print $2}' > /opt/KUTR00401/KUTR00401.txt
+
+
+################ 第十七题: 节点NotReady处理
+# 名为wk8s-node-0的Kubernetes worker node处于NotReady状态。调查发生这种情况的原有，并采取相应措施将node恢复为Ready状态，确保所做的任何更改永久有效
+kubectl get node
+ssh wk8s-node-0
+sudo -i
+systemctl status kubelet
+systemctl start kubelet
+systemctl enable kubelet
