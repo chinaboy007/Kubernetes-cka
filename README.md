@@ -14,26 +14,26 @@
 
 ## 第一题: RBAC鉴权
 **题目要求:**  
-创建clusterrole，只允许创建deployment,daemonset,statefulset资源
-在现有的namespace app-team1中创建一个名为cicd-token的新ServiceAccount
-限于namespace app-team1，将新的ClusterRole deployment-clusterrole绑定到新的ServiceAccount cidi-token
+创建clusterrole，只允许创建deployment,daemonset,statefulset资源  
+在现有的namespace app-team1中创建一个名为cicd-token的新ServiceAccount  
+限于namespace app-team1，将新的ClusterRole deployment-clusterrole绑定到新的ServiceAccount cidi-token  
 
 ## 第二题: 节点设置不可用
 **题目要求:**  
-将名为ek8s-node-1的node设置为不可用，并重新调度该node上所有运行的pods
+将名为ek8s-node-1的node设置为不可用，并重新调度该node上所有运行的pods  
 
 ## 第三题: 升级K8s版本
-**题目要求:**
-现有的Kubernetes集群正在运行版本为1.20.0，仅将主节点上的所有Kubernetes控制平面和节点组件升级到版本为1.20.1
-确保在升级之前drain主节点，并在升级后uncordon主节点
+**题目要求:**  
+现有的Kubernetes集群正在运行版本为1.20.0，仅将主节点上的所有Kubernetes控制平面和节点组件升级到版本为1.20.1  
+确保在升级之前drain主节点，并在升级后uncordon主节点  
 
 ## 第四题: etcd备份与恢复
-**题目要求:**
-首先，为运行在https://127.0.0.1:2379 上的现有etcd实例创建快照并将快照保存到 /data/backup/etcd-snapshot.db
-然后还原位于 /data/backup/etcd-snapshot-previous.db的现有先前快照(提供了TLS证书和密钥路径，连接etcd服务器)
+**题目要求:**  
+首先，为运行在https://127.0.0.1:2379 上的现有etcd实例创建快照并将快照保存到 /data/backup/etcd-snapshot.db  
+然后还原位于 /data/backup/etcd-snapshot-previous.db的现有先前快照(提供了TLS证书和密钥路径，连接etcd服务器)  
 
 ## 第五题: 网络策略
-**题目要求:**
+**题目要求:**  
 在现有的namespace my-app中创建一个名为allow-port-from-namespace的新NetworkPolicy
 确保新的NetworkPolicy允许namespace my-app中的Pods来连接到namespace big-corp中的端口8080
 进一步确保新的NetworkPolicy
